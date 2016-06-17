@@ -3,6 +3,6 @@
 
 struct Instruction;
 
-void disassemble_instruction(struct Instruction* instruction, unsigned char* buff);
+void disassemble_instruction(struct Instruction* instruction, char* buff);
 
 #endif

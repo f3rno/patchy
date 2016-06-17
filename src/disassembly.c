@@ -4,7 +4,7 @@
 #include "disassembly.h"
 #include "arch.h"
 
-void disassemble_instruction(struct Instruction* i, unsigned char* buff) {
+void disassemble_instruction(struct Instruction* i, char* buff) {
   switch(i->opcode) {
 
     // nop
@@ -84,7 +84,7 @@ void disassemble_instruction(struct Instruction* i, unsigned char* buff) {
 
     // or Rd, Rs
     case 0x0f:
-      sprintf(buff, "cmor %s, %s", REG_NAMES[i->dest], REG_NAMES[i->src]);
+      sprintf(buff, "or %s, %s", REG_NAMES[i->dest], REG_NAMES[i->src]);
       break;
 
     // xor Rd, Rs

@@ -1,4 +1,5 @@
 #include "data/memory.h"
+#include <stdlib.h>
 
 void alloc_memory16(struct Memory16* mem, const uint16_t size) {
   mem->contents = malloc(sizeof(uint16_t) * size);

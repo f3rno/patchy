@@ -1,0 +1,3 @@
+ldi a, 0xdead
+ldi b, 0xbeef
+hlt
