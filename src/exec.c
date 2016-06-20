@@ -4,155 +4,29 @@
 #include "arch.h"
 #include "exec.h"
 #include "core.h"
+#include "render.h"
 #include "data/memory.h"
 #include "data/instruction.h"
 #include "disassembly.h"
 
-void patchy_exec(struct PatchyCore* core) {
+void patchy_exec(struct PatchyCore* core, struct PatchyRenderData* render_data) {
   bool done = false;
 
   struct Instruction instruction;
-  char i_buff[1024];
+  //char i_buff[1024];
 
   while(!done && !core->halted) {
     decode_instruction(&core->rom->contents[core->reg_ip], &instruction);
 
     // TODO: Add debug flag
-    // disassemble_instruction(&instruction, &i_buff);
-    // printf("  %s\n", i_buff);
+    //disassemble_instruction(&instruction, &i_buff);
+    //printf("0x%x:  %s\n", core->reg_ip, i_buff);
 
-    switch(instruction.opcode) {
-      case 0x01:
-        patchy_exec_mov(core, &instruction);
-        break;
+    patchy_exec_instruction(core, &instruction);
 
-      case 0x02:
-        patchy_exec_ldi(core, &instruction);
-        break;
-
-      case 0x03:
-        patchy_exec_ldm(core, &instruction);
-        break;
-
-      case 0x04:
-        patchy_exec_lpx(core, &instruction);
-        break;
-
-      case 0x05:
-        patchy_exec_spx(core, &instruction);
-        break;
-
-      case 0x06:
-        patchy_exec_str(core, &instruction);
-        break;
-
-      case 0x07:
-        patchy_exec_push(core, &instruction);
-        break;
-
-      case 0x08:
-        patchy_exec_pop(core, &instruction);
-        break;
-
-      case 0x09:
-        patchy_exec_add(core, &instruction);
-        break;
-
-      case 0x0a:
-        patchy_exec_addi(core, &instruction);
-        break;
-
-      case 0x0b:
-        patchy_exec_sub(core, &instruction);
-        break;
-
-      case 0x0c:
-        patchy_exec_subi(core, &instruction);
-        break;
-
-      case 0x0d:
-        patchy_exec_cmp(core, &instruction);
-        break;
-
-      case 0x0e:
-        patchy_exec_and(core, &instruction);
-        break;
-
-      case 0x0f:
-        patchy_exec_or(core, &instruction);
-        break;
-
-      case 0x10:
-        patchy_exec_xor(core, &instruction);
-        break;
-
-      case 0x11:
-        patchy_exec_shl(core, &instruction);
-        break;
-
-      case 0x12:
-        patchy_exec_shr(core, &instruction);
-        break;
-
-      case 0x13:
-        patchy_exec_jmp(core, &instruction);
-        break;
-
-      case 0x14:
-        patchy_exec_je(core, &instruction);
-        break;
-
-      case 0x15:
-        patchy_exec_jne(core, &instruction);
-        break;
-
-      case 0x16:
-        patchy_exec_jg(core, &instruction);
-        break;
-
-      case 0x17:
-        patchy_exec_jge(core, &instruction);
-        break;
-
-      case 0x18:
-        patchy_exec_jl(core, &instruction);
-        break;
-
-      case 0x19:
-        patchy_exec_jle(core, &instruction);
-        break;
-
-      case 0x1a:
-        patchy_exec_jz(core, &instruction);
-        break;
-
-      case 0x1b:
-        patchy_exec_jnz(core, &instruction);
-        break;
-
-      case 0x1c:
-        patchy_exec_call(core, &instruction);
-        break;
-
-      case 0x1d:
-        patchy_exec_calli(core, &instruction);
-        break;
-
-      case 0x1e:
-        patchy_exec_ret(core);
-        break;
-
-      case 0xff:
-        patchy_exec_hlt(core);
-        break;
-
-      // Noop
-      case 0x00:
-        break;
-
-      default:
-        printf("[0x%x]: Unknown op: 0x%x\n", core->reg_ip, instruction.opcode);
-        break;
+    // SPX causes VRAM re-render
+    if(render_data != NULL && instruction.opcode == OP_SPX) {
+      render_vram_led_matrix(render_data, core->vram->contents);
     }
 
     if(core->halted) {
@@ -166,6 +40,142 @@ void patchy_exec(struct PatchyCore* core) {
         printf("Reached end of ROM, preventing cyclical execution, halted\n");
       }
     }
+  }
+}
+
+void patchy_exec_instruction(struct PatchyCore* core, struct Instruction* ins) {
+  switch(ins->opcode) {
+    case OP_MOV:
+      patchy_exec_mov(core, ins);
+      break;
+
+    case OP_LDI:
+      patchy_exec_ldi(core, ins);
+      break;
+
+    case OP_LDM:
+      patchy_exec_ldm(core, ins);
+      break;
+
+    case OP_LPX:
+      patchy_exec_lpx(core, ins);
+      break;
+
+    case OP_SPX:
+      patchy_exec_spx(core, ins);
+      break;
+
+    case OP_STR:
+      patchy_exec_str(core, ins);
+      break;
+
+    case OP_PUSH:
+      patchy_exec_push(core, ins);
+      break;
+
+    case OP_POP:
+      patchy_exec_pop(core, ins);
+      break;
+
+    case OP_ADD:
+      patchy_exec_add(core, ins);
+      break;
+
+    case OP_ADDI:
+      patchy_exec_addi(core, ins);
+      break;
+
+    case OP_SUB:
+      patchy_exec_sub(core, ins);
+      break;
+
+    case OP_SUBI:
+      patchy_exec_subi(core, ins);
+      break;
+
+    case OP_CMP:
+      patchy_exec_cmp(core, ins);
+      break;
+
+    case OP_AND:
+      patchy_exec_and(core, ins);
+      break;
+
+    case OP_OR:
+      patchy_exec_or(core, ins);
+      break;
+
+    case OP_XOR:
+      patchy_exec_xor(core, ins);
+      break;
+
+    case OP_SHL:
+      patchy_exec_shl(core, ins);
+      break;
+
+    case OP_SHR:
+      patchy_exec_shr(core, ins);
+      break;
+
+    case OP_JMP:
+      patchy_exec_jmp(core, ins);
+      break;
+
+    case OP_JE:
+      patchy_exec_je(core, ins);
+      break;
+
+    case OP_JNE:
+      patchy_exec_jne(core, ins);
+      break;
+
+    case OP_JG:
+      patchy_exec_jg(core, ins);
+      break;
+
+    case OP_JGE:
+      patchy_exec_jge(core, ins);
+      break;
+
+    case OP_JL:
+      patchy_exec_jl(core, ins);
+      break;
+
+    case OP_JLE:
+      patchy_exec_jle(core, ins);
+      break;
+
+    case OP_JZ:
+      patchy_exec_jz(core, ins);
+      break;
+
+    case OP_JNZ:
+      patchy_exec_jnz(core, ins);
+      break;
+
+    case OP_CALL:
+      patchy_exec_call(core, ins);
+      break;
+
+    case OP_CALLI:
+      patchy_exec_calli(core, ins);
+      break;
+
+    case OP_RET:
+      patchy_exec_ret(core);
+      break;
+
+    case OP_HLT:
+      patchy_exec_hlt(core);
+      break;
+
+    // Noop
+    case OP_NOOP:
+      break;
+
+    default:
+      printf("[0x%x]: Unknown op: 0x%x\n", core->reg_ip, ins->opcode);
+      break;
   }
 }
 
@@ -197,7 +207,36 @@ void patchy_exec_lpx(struct PatchyCore* core, struct Instruction* i) {
 }
 
 void patchy_exec_spx(struct PatchyCore* core, struct Instruction* i) {
-  // TODO
+  /**
+   * PX stores the pixel address in the form (y * 16) + x
+   * VRAM stores pixel data in three chunks of 16 addresses. I.e:
+   * RRRRRRRRRRRRRRRRGGGGGGGGGGGGGGGGBBBBBBBBBBBBBBBB
+   * Each character represents one column of LEDs ^
+   *
+   * Data in the color register is stored in the form 0bRGB
+   */
+
+  uint16_t color = *get_core_reg_by_adr(core, i->src);
+  uint8_t col = core->reg_px / 16;
+  uint8_t row = core->reg_px % 16;
+
+  if((color | 0b1) > 0) { // Red
+    core->vram->contents[col] |= 1 << row;
+  } else {
+    core->vram->contents[col] &= ~(1 << row);
+  }
+
+  if((color | 0b10) > 0) { // Green
+    core->vram->contents[16 + col] |= 1 << row;
+  } else {
+    core->vram->contents[16 + col] &= ~(1 << row);
+  }
+
+  if((color | 0b100) > 0) { // Blue
+    core->vram->contents[32 + col] |= 1 << row;
+  } else {
+    core->vram->contents[32 + col] &= ~(1 << row);
+  }
 }
 
 void patchy_exec_str(struct PatchyCore* core, struct Instruction* i) {

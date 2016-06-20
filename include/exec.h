@@ -5,8 +5,10 @@
 
 struct PatchyCore;
 struct Instruction;
+struct PatchyRenderData;
 
-void patchy_exec(struct PatchyCore* core);
+void patchy_exec(struct PatchyCore* core, struct PatchyRenderData* render_data);
+void patchy_exec_instruction(struct PatchyCore* core, struct Instruction* ins);
 void jmp_to_reg_by_adr(struct PatchyCore* core, uint8_t addr);
 
 void patchy_exec_mov(struct PatchyCore* core, struct Instruction* i);

@@ -151,7 +151,7 @@ resolve_px:
   push C
   push E
   push F
-  
+
   # Load up addresses, we don't yet support jumping to immediate
   ldi E, [_end_mul_resolve_px]
   ldi F, [_do_mul_resolve_px]

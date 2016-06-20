@@ -32,6 +32,7 @@ struct PatchyCore {
   bool halted;
 
   struct Memory16* ram;
+  struct Memory16* vram;
   struct Memory32* rom;
 };
 

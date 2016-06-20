@@ -8,7 +8,7 @@ struct Instruction {
   uint8_t dest;
   uint8_t src;
   uint16_t immediate;
-};
+} __attribute__((packed));
 
 void decode_instruction(uint32_t* data, struct Instruction* instruction);
 void encode_instruction(struct Instruction* instruction, uint32_t* data);

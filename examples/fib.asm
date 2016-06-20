@@ -1,6 +1,6 @@
 ldi a, 0
 ldi b, 1
-ldi c, 16 # nth fib number
+ldi c, 20 # nth fib number
 ldi f, [done]
 ldi dp, [loop] # Use DP for 2nd label, lazy implementation
 

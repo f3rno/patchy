@@ -5,17 +5,27 @@ CFLAGS=-c -Os -Wall -Wextra -Wfloat-equal -Wundef -Wshadow -Wpointer-arith -Wswi
 DISASSEMBLER_SRC=disassembler.c src/disassembly.c src/data/instruction.c src/arch.c
 DISASSEMBLER_OBJ=$(DISASSEMBLER_SRC:.c=.o)
 DISASSEMBLER_EXE=bin/disassembler
-PATCHY_SRC=patchy.c src/data/instruction.c src/data/memory.c src/core.c src/load.c src/exec.c src/debug.c src/arch.c src/disassembly.c
+
+PATCHY_SRC=patchy.c src/data/instruction.c src/data/memory.c src/core.c src/load.c src/exec.c src/debug.c src/arch.c src/disassembly.c src/render.c
 PATCHY_OBJ=$(PATCHY_SRC:.c=.o)
 PATCHY_EXE=bin/patchy
+PATCHY_LDFLAGS=-lncurses
 
-all: $(PATCHY_SRC) $(DISASSEMBLER_SRC) $(PATCHY_EXE) $(DISASSEMBLER_EXE)
+DUMPINSP_SRC=dump-inspector.c src/render.c
+DUMPINSP_OBJ=$(DUMPINSP_SRC:.c=.o)
+DUMPINSP_EXE=bin/dump-inspector
+DUMPINSP_LDFLAGS=-lncurses
+
+all: $(PATCHY_SRC) $(DISASSEMBLER_SRC) $(DUMPINSP_SRC) $(PATCHY_EXE) $(DISASSEMBLER_EXE) $(DUMPINSP_EXE)
 
 $(PATCHY_EXE): $(PATCHY_OBJ)
-	$(CC) $(LDFLAGS) $(PATCHY_OBJ) -o $@
+	$(CC) $(LDFLAGS) $(PATCHY_LDFLAGS) $(PATCHY_OBJ) -o $@
 
 $(DISASSEMBLER_EXE): $(DISASSEMBLER_OBJ)
 	$(CC) $(LDFLAGS) $(DISASSEMBLER_OBJ) -o $@
+
+$(DUMPINSP_EXE): $(DUMPINSP_OBJ)
+	$(CC) $(LDFLAGS) $(DUMPINSP_LDFLAGS) $(DUMPINSP_OBJ) -o $@
 
 .c.o:
 	$(CC) $(CFLAGS) $< -o $@

@@ -8,17 +8,21 @@
 
 void alloc_patchy_core(struct PatchyCore* core, const uint16_t ram_size, const uint16_t rom_size) {
   core->ram = malloc(sizeof(struct Memory16));
+  core->vram = malloc(sizeof(struct Memory16));
   core->rom = malloc(sizeof(struct Memory32));
 
   alloc_memory16(core->ram, ram_size);
+  alloc_memory16(core->vram, 48); // 3 words per col, 16 cols
   alloc_memory32(core->rom, rom_size);
 }
 
 void dealloc_patchy_core(struct PatchyCore* core) {
   dealloc_memory16(core->ram);
+  dealloc_memory16(core->vram);
   dealloc_memory32(core->rom);
 
   free(core->ram);
+  free(core->vram);
   free(core->rom);
 }
 
