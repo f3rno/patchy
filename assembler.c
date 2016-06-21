@@ -28,6 +28,10 @@ bool is_valid_identifier_end(char c);
 bool is_valid_argument_start(char c);
 bool is_valid_argument_end(char c);
 
+void print_asm_entity(struct ParsedEntity* entity);
+void dealloc_asm_entity(struct ParsedEntity* entity);
+void optimise_asm_entity_args(struct ParsedEntity* entity);
+
 int main(int argc, char *argv[]) {
 
   // TODO: Use the GNU C args parsing lib
@@ -157,37 +161,12 @@ int main(int argc, char *argv[]) {
 
     // Deal with a processed entity
     if(entity != NULL) {
-
-      // Truncate the argument pool if needed
-      if(entity->alloc_arguments > entity->n_arguments) {
-        entity->arguments = realloc(
-          entity->arguments,
-          sizeof(char*) * entity->n_arguments
-        );
-
-        entity->argument_len = realloc(
-          entity->argument_len,
-          sizeof(uint8_t) * entity->n_arguments
-        );
-
-        entity->alloc_arguments = entity->n_arguments;
-      }
+      optimise_asm_entity_args(entity);
 
       // Somehow save the entity in a tree of some sort
       // For now, just print information about it to the screen
-      // TODO: Code method to print out entity trees for debugging
-      printf("  %s\n", entity->identifier);
-
-      for(int i = 0; i < entity->n_arguments; i++) {
-        printf("    %s\n", entity->arguments[i]);
-
-        free(entity->arguments[i]);
-      }
-
-      free(entity->identifier);
-      free(entity->arguments);
-      free(entity->argument_len);
-      free(entity);
+      print_asm_entity(entity);
+      dealloc_asm_entity(entity);
     }
   }
 
@@ -217,4 +196,48 @@ bool is_valid_argument_start(char c) {
 
 bool is_valid_argument_end(char c) {
   return !is_valid_argument_start(c);
+}
+
+void print_asm_entity(struct ParsedEntity* entity) {
+  printf("%s ", entity->identifier);
+
+  for(int i = 0; i < entity->n_arguments; i++) {
+    printf("%s", entity->arguments[i]);
+
+    if(i != entity->n_arguments - 1) {
+      printf(", ");
+    }
+  }
+
+  printf("\n");
+}
+
+void dealloc_asm_entity(struct ParsedEntity* entity) {
+  free(entity->identifier);
+
+  if(entity->arguments != NULL) {
+    for(uint8_t i = 0; i < entity->n_arguments; i++) {
+      free(entity->arguments[i]);
+    }
+  }
+
+  free(entity->arguments);
+  free(entity->argument_len);
+  free(entity);
+}
+
+void optimise_asm_entity_args(struct ParsedEntity* entity) {
+  if(entity->alloc_arguments > entity->n_arguments) {
+    entity->arguments = realloc(
+      entity->arguments,
+      sizeof(char*) * entity->n_arguments
+    );
+
+    entity->argument_len = realloc(
+      entity->argument_len,
+      sizeof(uint8_t) * entity->n_arguments
+    );
+
+    entity->alloc_arguments = entity->n_arguments;
+  }
 }
