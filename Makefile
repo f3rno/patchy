@@ -6,7 +6,7 @@ DISASSEMBLER_SRC=disassembler.c src/disassembly.c src/data/instruction.c src/arc
 DISASSEMBLER_OBJ=$(DISASSEMBLER_SRC:.c=.o)
 DISASSEMBLER_EXE=bin/disassembler
 
-ASSEMBLER_SRC=assembler.c
+ASSEMBLER_SRC=assembler.c src/assembler/parser.c src/assembler/entity.c src/assembler/tree.c src/assembler/label_table.c
 ASSEMBLER_OBJ=$(ASSEMBLER_SRC:.c=.o)
 ASSEMBLER_EXE=bin/assembler
 

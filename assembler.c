@@ -5,32 +5,10 @@
 #include <string.h>
 #include <assert.h>
 
-enum PARSER_MODES {
-  NEW,
-  SEEKING_IDENTIFIER,
-  PARSING_IDENTIFIER,
-  SEEKING_ARGUMENT,
-  PARSING_ARGUMENT
-};
-
-struct ParsedEntity {
-  char* identifier;
-  uint8_t identifier_len;
-
-  char** arguments;
-  uint8_t* argument_len;
-  uint8_t n_arguments;
-  uint8_t alloc_arguments;
-};
-
-bool is_valid_identifier_start(char c);
-bool is_valid_identifier_end(char c);
-bool is_valid_argument_start(char c);
-bool is_valid_argument_end(char c);
-
-void print_asm_entity(struct ParsedEntity* entity);
-void dealloc_asm_entity(struct ParsedEntity* entity);
-void optimise_asm_entity_args(struct ParsedEntity* entity);
+#include "assembler/parser.h"
+#include "assembler/entity.h"
+#include "assembler/label_table.h"
+#include "assembler/tree.h"
 
 int main(int argc, char *argv[]) {
 
@@ -52,6 +30,9 @@ int main(int argc, char *argv[]) {
   char* buffer = NULL;
   size_t buffer_len = 0;
 
+  struct AssemblyLabelTable* prog_label_table = alloc_label_table();
+  struct ParsedEntityTree* prog_tree = alloc_entity_tree();
+
   while(getline(&buffer, &buffer_len, fp) != -1) {
     enum PARSER_MODES mode = NEW;
 
@@ -59,12 +40,7 @@ int main(int argc, char *argv[]) {
     uint16_t entity_start = 0;
 
     for(uint16_t i = 0; i < buffer_len; i++) {
-
-      // Handle line endings, and two types of comments
-      bool line_ended = buffer[i] == '\n' ||
-                        buffer[i] == '\0' ||
-                        buffer[i] == ';' ||
-                        buffer[i] == '#';
+      bool line_ended = is_valid_line_ending(buffer[i]);
 
       if(!line_ended) {
 
@@ -90,11 +66,8 @@ int main(int argc, char *argv[]) {
           mode = SEEKING_ARGUMENT;
 
           // Save identifier in a new entity
-          entity = malloc(sizeof(struct ParsedEntity));
-          entity->n_arguments = 0;
-          entity->alloc_arguments = 0;
-          entity->argument_len = NULL;
-          entity->arguments = NULL;
+          assert(entity == NULL);
+          entity = alloc_asm_entity();
 
           entity->identifier_len = (i - entity_start) + 1;
           entity->identifier = malloc(sizeof(char) * entity->identifier_len);
@@ -106,6 +79,11 @@ int main(int argc, char *argv[]) {
           );
 
           entity->identifier[entity->identifier_len - 1] = '\0';
+
+          // Detect labels properly
+          if(buffer[i] == ':') {
+            entity->is_label = true;
+          }
         }
 
       // Reading an argument, check for completion
@@ -115,26 +93,11 @@ int main(int argc, char *argv[]) {
 
           // Initialise the argument pool if needed
           if(entity->arguments == NULL) {
-            assert(entity->n_arguments == 0);
-            assert(entity->alloc_arguments == 0);
-
-            entity->arguments = malloc(sizeof(char*) * 2);
-            entity->argument_len = malloc(sizeof(uint8_t) * 2);
-            entity->n_arguments = 0;
+            alloc_asm_entity_args(entity);
 
           // Grow the argument pool by 2 if needed
           } else if(entity->alloc_arguments == entity->n_arguments) {
-            entity->arguments = realloc(
-              entity->arguments,
-              sizeof(char*) * (entity->alloc_arguments + 2)
-            );
-
-            entity->argument_len = realloc(
-              entity->argument_len,
-              sizeof(uint8_t) * (entity->alloc_arguments + 2)
-            );
-
-            entity->alloc_arguments += 2;
+            grow_asm_entity_args(entity);
           }
 
           uint8_t arg_i = entity->n_arguments;
@@ -162,82 +125,28 @@ int main(int argc, char *argv[]) {
     // Deal with a processed entity
     if(entity != NULL) {
       optimise_asm_entity_args(entity);
-
-      // Somehow save the entity in a tree of some sort
-      // For now, just print information about it to the screen
-      print_asm_entity(entity);
-      dealloc_asm_entity(entity);
+      add_entity_to_tree(entity, prog_tree);
     }
   }
+
+  resolve_entity_tree_labels(prog_tree, prog_label_table);
+
+  uint16_t prog_size = get_tree_bin_buff_size(prog_tree);
+  uint32_t* prog_buff = malloc(sizeof(uint32_t) * prog_size);
+
+  assemble_entity_tree(prog_tree, prog_label_table, prog_buff);
+
+  dealloc_label_table(prog_label_table);
+  dealloc_entity_tree(prog_tree);
 
   free(buffer);
   fclose(fp);
 
+  fp = fopen("test-out.bin", "wb");
+  fwrite(prog_buff, sizeof(uint32_t), prog_size, fp);
+  fclose(fp);
+
+  printf("Write %d assembled bytes to test-out.bin", prog_size * 4);
+
   return 0;
-}
-
-bool is_valid_identifier_start(char c) {
-  return (c >= 'A' && c <= 'Z') ||
-         (c >= 'a' && c <= 'z') ||
-         c == 0x5F; // _
-}
-
-bool is_valid_identifier_end(char c) {
-  return !is_valid_identifier_start(c);
-}
-
-bool is_valid_argument_start(char c) {
-  return (c >= '0' && c <= '9') ||
-         (c >= 'A' && c <= 'Z') ||
-         (c >= 'a' && c <= 'z') ||
-          c == 0x5B || c == 0x5D || // [ ]
-          c == 0x5F; // _
-}
-
-bool is_valid_argument_end(char c) {
-  return !is_valid_argument_start(c);
-}
-
-void print_asm_entity(struct ParsedEntity* entity) {
-  printf("%s ", entity->identifier);
-
-  for(int i = 0; i < entity->n_arguments; i++) {
-    printf("%s", entity->arguments[i]);
-
-    if(i != entity->n_arguments - 1) {
-      printf(", ");
-    }
-  }
-
-  printf("\n");
-}
-
-void dealloc_asm_entity(struct ParsedEntity* entity) {
-  free(entity->identifier);
-
-  if(entity->arguments != NULL) {
-    for(uint8_t i = 0; i < entity->n_arguments; i++) {
-      free(entity->arguments[i]);
-    }
-  }
-
-  free(entity->arguments);
-  free(entity->argument_len);
-  free(entity);
-}
-
-void optimise_asm_entity_args(struct ParsedEntity* entity) {
-  if(entity->alloc_arguments > entity->n_arguments) {
-    entity->arguments = realloc(
-      entity->arguments,
-      sizeof(char*) * entity->n_arguments
-    );
-
-    entity->argument_len = realloc(
-      entity->argument_len,
-      sizeof(uint8_t) * entity->n_arguments
-    );
-
-    entity->alloc_arguments = entity->n_arguments;
-  }
 }
